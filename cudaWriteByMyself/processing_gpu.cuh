@@ -10,8 +10,13 @@
 #include <cuComplex.h>
 
 __global__ void rdComplexMultiply(cuFloatComplex* s, cuFloatComplex* w, long int M, long int N);
+__global__ void rdComplexTranspose(cuFloatComplex* sout, cuFloatComplex* sin, long int M, long int N);
 void readData(cuFloatComplex* signal);
-void pulseCompression(cuFloatComplex* signal, cuFloatComplex* ori, int M, int N);
+void pulseCompression(cuFloatComplex* d_signal, cuFloatComplex* d_ori, int M, int N);
+void mtd(cuFloatComplex* d_signal, int M, int N);
+void CFAR(cuFloatComplex* d_signal, long int M, long int N, int rnum, int prum);
+void doGpuProcessing(cuFloatComplex* signal, cuFloatComplex* ori, int M, int N);
+
 
 #endif // !PROCESSING_GPU_H
 
