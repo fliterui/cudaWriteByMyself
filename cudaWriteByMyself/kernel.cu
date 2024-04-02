@@ -13,6 +13,6 @@
 int main()
 {
 	printf("fuck you!");
-
+	int a = 1;
 	return 0;
 }
