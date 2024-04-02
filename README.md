@@ -1,4 +1,6 @@
 不会
+
+```c++
 __global__ void shit(int *a)
 {
     printf("%d",*a);
