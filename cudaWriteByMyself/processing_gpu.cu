@@ -1,5 +1,7 @@
 #include "processing_gpu.cuh"
 #include <device_launch_parameters.h>
+#include "matplotlibcpp.h"
+namespace plt = matplotlibcpp;
 
 #define BLOCKX 1024
 
@@ -11,7 +13,7 @@ __global__ void rdComplexMultiply(cuFloatComplex* s, cuFloatComplex* w, long int
     if (i < N * M)
     {
         long int n = i % N;
-        printf("%d %d          ", i, n);
+        //printf("%d %d          ", i, n);
         s[i] = cuCmulf(s[i], cuConjf(w[n]));
     }
 }
@@ -53,9 +55,75 @@ __global__ void rdSquareCopy(float* sout, cuFloatComplex* sin, long int M, long 
 }
 
 
-void readData(cuFloatComplex* signal)
+
+void readData(cuFloatComplex* signal, cuFloatComplex *ori, long int M, long int N)                    //这个到时候用固定内存能好点
 {
-    int a = 1;                              //不知道咋写     返回的是Host变量
+    FILE* fp;//文件指针
+    fp = fopen("signal_real.txt", "r");//以文本方式打开文件。
+    if (fp == NULL) //打开文件出错。
+        printf("error1");
+    for (int i = 0; i<M*N; i++)
+    {
+        fscanf(fp, "%lf", &signal[i].x);
+       /* if (signal[i].x == EOF)
+        {
+            printf("signal num is %d", i);
+            break;
+        }*/
+    }
+    fclose(fp);//关闭文件
+    fp = fopen("signal_imag.txt", "r");
+    if (fp == NULL)
+        printf("error");
+    for (int i = 0; i < M * N; i++)
+    {
+        fscanf(fp, "%lf", &signal[i].y);
+        /*if (signal[i].y == EOF)
+        {
+            break;
+        }*/
+    }
+    fclose(fp);
+    fp = fopen("ori_real.txt", "r");
+    if (fp == NULL)
+        printf("error");
+    for (int i = 0; i<N; i++)
+    {
+        fscanf(fp, "%lf", &ori[i].x);
+        /*if (ori[i].x == EOF)
+        {
+            printf("ori num is %d", i);
+            break;
+        }*/
+    }
+    fclose(fp);
+    fp = fopen("ori_imag.txt", "r");
+    if (fp == NULL)
+        printf("error");
+    for (int i = 0; i < N; i++)
+    {
+        fscanf(fp, "%lf", &ori[i].y);
+       /* if (ori[i].y == EOF)
+        {
+            break;
+        }*/
+    }
+    fclose(fp);
+    printf("读完了, 你真棒! \n");
+}
+
+void writeData(float *result, long int M, long int N)
+{
+    FILE* fpWrite;
+    fpWrite = fopen("out.txt", "w");
+    if (fpWrite == NULL)
+    {
+        printf("error");
+        return;
+    }
+    for (int i = 0; i < M * N; i++)
+        fprintf(fpWrite, "%2.15f\n", result[i]);
+    fclose(fpWrite);
 }
 
  void pulseCompression(cuFloatComplex* d_signal, cuFloatComplex * d_ori, long int M, long int N)
@@ -135,7 +203,7 @@ void readData(cuFloatComplex* signal)
      cudaMalloc((void**)&d_sqSignal, memSize);
      float* d_out;
      cudaMalloc((void**)&d_out, memSize);
-     cudaMemset(d_out, 0, memSize);                                 //咱也不知道有没有意义这一步
+     cudaMemset(d_out, 0, memSize);                                 //咱也不知道有没有意义这一步         有的, 不然边缘的就没赋值了
      dim3 block1, grid1;
      block1.x = BLOCKX;
      grid1.x = (M * N + block1.x - 1) / block1.x;
@@ -148,4 +216,10 @@ void readData(cuFloatComplex* signal)
     float pfa = 1e-6;                                 // 恒虚警率               //这个可以考虑用那个什么什么常量内存啥的
     float k = powf(pfa, (-1 / (2 * (float)rnum))) - 1;
     CFAR << <block2, grid2 >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
+
+    float* out;
+    cudaMallocHost((void**)&out, memSize);
+    cudaMemcpy(out, d_out, memSize, cudaMemcpyDeviceToHost);
+    writeData(out, M, N);
+    printf("处理完了, 你真棒 \n");
 }
