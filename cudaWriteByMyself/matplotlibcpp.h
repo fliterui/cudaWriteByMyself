@@ -337,7 +337,7 @@ namespace detail {
 // Type selector for numpy array conversion
 template <typename T> struct select_npy_type { const static NPY_TYPES type = NPY_NOTYPE; }; //Default
 template <> struct select_npy_type<double> { const static NPY_TYPES type = NPY_DOUBLE; };
-template <> struct select_npy_type<float> { const static NPY_TYPES type = NPY_FLOAT; };
+template <> struct select_npy_type<double> { const static NPY_TYPES type = NPY_FLOAT; };
 template <> struct select_npy_type<bool> { const static NPY_TYPES type = NPY_BOOL; };
 template <> struct select_npy_type<int8_t> { const static NPY_TYPES type = NPY_INT8; };
 template <> struct select_npy_type<int16_t> { const static NPY_TYPES type = NPY_SHORT; };
@@ -952,7 +952,7 @@ inline void imshow(const unsigned char *ptr, const int rows, const int columns, 
     detail::imshow((void *) ptr, NPY_UINT8, rows, columns, colors, keywords, out);
 }
 
-inline void imshow(const float *ptr, const int rows, const int columns, const int colors, const std::map<std::string, std::string> &keywords = {}, PyObject** out = nullptr)
+inline void imshow(const double *ptr, const int rows, const int columns, const int colors, const std::map<std::string, std::string> &keywords = {}, PyObject** out = nullptr)
 {
     detail::imshow((void *) ptr, NPY_FLOAT, rows, columns, colors, keywords, out);
 }
@@ -1847,7 +1847,7 @@ void text(Numeric x, Numeric y, const std::string& s = "")
     Py_DECREF(res);
 }
 
-inline void colorbar(PyObject* mappable = NULL, const std::map<std::string, float>& keywords = {})
+inline void colorbar(PyObject* mappable = NULL, const std::map<std::string, double>& keywords = {})
 {
     if (mappable == NULL)
         throw std::runtime_error("Must call colorbar with PyObject* returned from an image, contour, surface, etc.");
@@ -1858,7 +1858,7 @@ inline void colorbar(PyObject* mappable = NULL, const std::map<std::string, floa
     PyTuple_SetItem(args, 0, mappable);
 
     PyObject* kwargs = PyDict_New();
-    for(std::map<std::string, float>::const_iterator it = keywords.begin(); it != keywords.end(); ++it)
+    for(std::map<std::string, double>::const_iterator it = keywords.begin(); it != keywords.end(); ++it)
     {
         PyDict_SetItemString(kwargs, it->first.c_str(), PyFloat_FromDouble(it->second));
     }

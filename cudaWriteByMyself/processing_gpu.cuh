@@ -8,16 +8,23 @@
 #include <cufft.h>
 #include <math.h>
 #include <cuComplex.h>
-#include<pyconfig.h>
-__global__ void rdComplexMultiply(cuFloatComplex* s, cuFloatComplex* w, long int M, long int N);
-__global__ void rdComplexTranspose(cuFloatComplex* sout, cuFloatComplex* sin, long int M, long int N);
-__global__ void rdSquareCopy(float* sout, cuFloatComplex* sin, long int M, long int N);
-void readData(cuFloatComplex* signal, cuFloatComplex* ori, long int M, long int N);
-void writeData(float* result, long int M, long int N);
-void pulseCompression(cuFloatComplex* d_signal, cuFloatComplex* d_ori, long int M, long int N);
-void mtd(cuFloatComplex* d_signal, long int M, long int N);
-__global__ void CFAR(float *d_out, float* d_signal, long int M, long int N, int rnum, int prum, float k);
-void doGpuProcessing(cuFloatComplex* signal, cuFloatComplex* ori, long int M, long int N);
+//#include<pyconfig.h>
+__global__ void rdComplexMultiply(cuDoubleComplex* s, cuDoubleComplex* w, int M, int N);
+__global__ void rdComplexTranspose(cuDoubleComplex* sout, cuDoubleComplex* sin, int M, int N);
+__global__ void rdSquareCopy(double* sout, cuDoubleComplex* sin, int M, int N);
+void readData(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
+void writeData(double* result, int M, int N);
+void pulseCompression(cuDoubleComplex* d_signal, cuDoubleComplex* d_ori, int M, int N);
+void mtd(cuDoubleComplex* d_signal, int M, int N);
+__global__ void CFAR(double *d_out, double* d_signal, int M, int N, int rnum, int prum, double k);
+void doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
+
+
+void test(cuDoubleComplex* d_signal, int M, int N);
+void printGpuModComplex(cuDoubleComplex* d_signal);
+void printGpuModFloat(double* d_signal);
+
+
 
 
 #endif // !PROCESSING_GPU_H

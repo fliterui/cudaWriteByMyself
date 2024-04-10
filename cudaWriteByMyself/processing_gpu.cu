@@ -1,62 +1,62 @@
 #include "processing_gpu.cuh"
 #include <device_launch_parameters.h>
-#include "matplotlibcpp.h"
-namespace plt = matplotlibcpp;
+//#include "matplotlibcpp.h"
+//namespace plt = matplotlibcpp;
 
 #define BLOCKX 1024
 
 
-__global__ void rdComplexMultiply(cuFloatComplex* s, cuFloatComplex* w, long int M, long int N)         //这个是nmlgb的脉冲压缩, 那那个b匹配滤波器是干啥的
+__global__ void rdComplexMultiply(cuDoubleComplex* s, cuDoubleComplex* w, int M, int N)         //这个是nmlgb的脉冲压缩, 那那个b匹配滤波器是干啥的
 {
-    long int i = blockDim.x * blockIdx.x + threadIdx.x;
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (i < N * M)
     {
-        long int n = i % N;
+        int n = i % N;
         //printf("%d %d          ", i, n);
-        s[i] = cuCmulf(s[i], cuConjf(w[n]));
+        s[i] = cuCmul(s[i], cuConj(w[n]));
     }
 }
 
 
-__global__ void rdComplexTranspose(cuFloatComplex* sout, cuFloatComplex* sin, long int M, long int N)       //矩阵转置???   是的
+__global__ void rdComplexTranspose(cuDoubleComplex* sout, cuDoubleComplex* sin, int M, int N)       //矩阵转置???   是的
 {
-    long int i = blockDim.x * blockIdx.x + threadIdx.x;
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (i < N * M)
     {
-        long int n = i % N;                                                             //这个是行
-        long int m = (long int)(i - n) / N;                                             //这个是列
+        int n = i % N;                                                             //这个是行
+        int m = (int)(i - n) / N;                                             //这个是列
 
         sout[m + n * M] = sin[n + m * N];
     }
  }
 
 
-/*__global__ void rdSquareCopy(cuFloatComplex* sout, cuFloatComplex* sin, long int M, long int N) {           //sin平方然后输出到cout里   //你说你都平方了, 还复数干啥, 改了!?
-    long int i = blockDim.x * blockIdx.x + threadIdx.x;
+/*__global__ void rdSquareCopy(cuDoubleComplex* sout, cuDoubleComplex* sin, int M, int N) {           //sin平方然后输出到cout里   //你说你都平方了, 还复数干啥, 改了!?
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (i < N * M)
     {
-        float x = cuCabsf(sin[i]);                                          //求模
+        double x = cuCabsf(sin[i]);                                          //求模
         sout[i] = make_cuFloatComplex(x * x, 0);                            //平方, 转复数
     }
 }*/
 
 
-__global__ void rdSquareCopy(float* sout, cuFloatComplex* sin, long int M, long int N) {           //sin平方然后输出到cout里   //你说你都平方了, 还复数干啥, 改了!?
-    long int i = blockDim.x * blockIdx.x + threadIdx.x;
-
+__global__ void rdSquareCopy(double* sout, cuDoubleComplex* sin, int M, int N) {           //sin平方然后输出到cout里   //你说你都平方了, 还复数干啥, 改了!?
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < N * M)
     {
-        float x = cuCabsf(sin[i]);                                          //求模
+        double x = cuCabs(sin[i]);                                          //求模
         sout[i] = x*x;                                               //平方, 转复数
     }
+    
 }
 
 
 
-void readData(cuFloatComplex* signal, cuFloatComplex *ori, long int M, long int N)                    //这个到时候用固定内存能好点
+void readData(cuDoubleComplex* signal, cuDoubleComplex *ori, int M, int N)                    //这个到时候用固定内存能好点
 {
     FILE* fp;//文件指针
     fp = fopen("signal_real.txt", "r");//以文本方式打开文件。
@@ -112,74 +112,105 @@ void readData(cuFloatComplex* signal, cuFloatComplex *ori, long int M, long int 
     printf("读完了, 你真棒! \n");
 }
 
-void writeData(float *result, long int M, long int N)
+void writeData(double *d_signal, int M, int N)               //这个输入的是gpu的内存就行了, 他会自动给你拷贝到Host里
 {
+    size_t memSize = M * N * sizeof(double);
+    double* out;
+    cudaMallocHost((void**)&out, memSize);
+    cudaMemcpy(out, d_signal, memSize, cudaMemcpyHostToHost);
+    //out[1] = 1;
     FILE* fpWrite;
-    fpWrite = fopen("out.txt", "w");
+    fpWrite = fopen("outtt.txt", "w");
     if (fpWrite == NULL)
     {
         printf("error");
         return;
     }
     for (int i = 0; i < M * N; i++)
-        fprintf(fpWrite, "%2.15f\n", result[i]);
+        fprintf(fpWrite, "%2.15f\n", out[i]);
     fclose(fpWrite);
 }
 
- void pulseCompression(cuFloatComplex* d_signal, cuFloatComplex * d_ori, long int M, long int N)
+/*脉冲压缩
+* d_signal是回波, d_ori是sin信号, M, N是信号的M行N列
+*/
+
+ void pulseCompression(cuDoubleComplex* d_signal, cuDoubleComplex * d_ori, int M, int N)                
  { 
-
+    int inembed[1] = { 0 };
+    int onembed[1] = { 0 };
+    int number_N[1] = { (int)N };                                         //这不跟longint冲突了
+    int istride = 1;
+    int rank = 1;
+    int ostride = 1;
     cufftHandle plan1;
-    cufftPlan1d(&plan1, N, CUFFT_C2C, M);
-    cufftExecC2C(plan1, (cufftComplex*)d_signal, (cufftComplex*)d_signal, CUFFT_FORWARD);
+    
+    //cufftPlanMany(&plan1, rank, number_N, inembed, istride, N, onembed, ostride, N, CUFFT_Z2Z, M);
+    //printf("shit ");
+    //printGpuModComplex(d_signal);
+    cufftPlan1d(&plan1, N, CUFFT_Z2Z, M);
+    cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_FORWARD);               //信号fft, 用来卷积
+    //printf("fuck ");
+    //printGpuModComplex(d_signal);
     cufftDestroy(plan1);
-
+    //test(d_signal, M, N);
     cufftHandle plan2;
-    cufftPlan1d(&plan2, N, CUFFT_C2C, 1);
-    cufftExecC2C(plan2, (cufftComplex*)d_ori, (cufftComplex*)d_ori, CUFFT_FORWARD);
+    cufftPlan1d(&plan2, N, CUFFT_Z2Z, 1);
+    cufftExecZ2Z(plan2, (cufftDoubleComplex*)d_ori, (cufftDoubleComplex*)d_ori, CUFFT_FORWARD);                     //sin fft, 用来卷积
     cufftDestroy(plan2);
     
     dim3 block, grid;
     block.x = BLOCKX;
     grid.x = (M * N + block.x - 1) / block.x;
-    rdComplexMultiply<<<block,grid>>>(d_signal, d_ori, M, N);                               //我突然发现,他都没用过流, nvprof和啥nightSystem啥的也都没分析过
+    
+    rdComplexMultiply<<<block,grid>>>(d_signal, d_ori, M, N);                                              //乘以共轭直, 直接改的d_signal
+    //test(d_ori, 1, N);                                                                                                                                               //我突然发现,他都没用过流, nvprof和啥nightSystem啥的也都没分析过
     
     cufftHandle plan3;
-    cufftPlan1d(&plan3, N, CUFFT_C2C, M);
-    cufftExecC2C(plan3, d_signal, d_signal, CUFFT_INVERSE);
+    cufftPlan1d(&plan3, N, CUFFT_Z2Z, M);
+    cufftExecZ2Z(plan3, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_INVERSE);                                                 //ifft
     cufftDestroy(plan3);
 
  }
 
- void mtd(cuFloatComplex* d_signal, long int M, long int N)
+ /*mtd
+* d_signal是回波, d_ori是sin信号, M, N是信号的M行N列
+*/
+
+ void mtd(cuDoubleComplex* d_signal, int M, int N)
  {
-     /*cuFloatComplex* signal;
-     size_t memSize = M* N * sizeof(cuFloatComplex);
-     cudaMalloc((void**)&signal, memSize);
-     cudaMemcpy(signal, d_signal, memSize, cudaMemcpyDeviceToDevice);               //不对, 后面还得转置回去, cfar要用mtd的结果*/
+     /*cuDoubleComplex* signal;
+     size_t memSize = M* N * sizeof(cuDoubleComplex);
+     cudaMalloc((void**)&signal, memSize);  
+     cudaMemcpy(signal, d_signal, memSize, cudaMemcpyDeviceToDevice);                                                                         //不对, 后面还得转置回去, cfar要用mtd的结果*/
      dim3 block, grid;
      block.x = BLOCKX;
      grid.x = (M * N + block.x - 1) / block.x;
-     rdComplexTranspose << <block, grid >> > (d_signal, d_signal, M, N);                                  //这个得狠狠的优化
+     rdComplexTranspose << <block, grid >> > (d_signal, d_signal, M, N);                                    //先转置好做列的fft           //这个得狠狠的优化
      cufftHandle plan;
-     cufftPlan1d(&plan,M,CUFFT_C2C,N);                                                                    //按理说fft点数应该大于M来着 即一般k>M
-     cufftExecC2C(plan, d_signal, d_signal, CUFFT_FORWARD);
+     cufftPlan1d(&plan,M,CUFFT_Z2Z,N);                                                                                                          //按理说fft点数应该大于M来着 即一般k>M
+     cufftExecZ2Z(plan, d_signal, d_signal, CUFFT_FORWARD);                                                 //做fft
      cufftDestroy(plan);
      rdComplexTranspose << <block, grid >> > (d_signal, d_signal, M, N);                                
  }
 
- __global__ void CFAR(float *d_out, float* d_signal, long int M, long int N ,int rnum, int pnum, float k)                // 另外信噪比什么的都还没弄
+
+ /*CFAR
+* d_signal是回波, d_ori是sin信号, M, N是信号的M行N列, rnum是参考单元个数, pnum是保护单元个数, k是哪个乘在功率平均值上的那个系数(根据pfa算完了的那个)
+*/
+
+ __global__ void CFAR(double *d_out, double* d_signal, int M, int N ,int rnum, int pnum, double k)                                                  // 另外信噪比什么的都还没弄
  {
-     long int i = blockIdx.x* blockDim.x + threadIdx.x;                                     //这个咋弄aaaaa
-     long int col = i % N;                                                                  //i% N是纵坐标, 即每一行的第几个元素
-     float thold=0;
+     int i = blockIdx.x* blockDim.x + threadIdx.x;                                                                                                            //这个咋弄aaaaa
+     int col = i % N;                                                                  //i% N是纵坐标, 即每一行的第几个元素
+     double thold=0;
      if (col >= rnum + pnum && col < N - rnum - pnum && i < M * N)                          //边缘的先没管 这个取元素[i-pnum+rnum:ii-pnum-1 i+pnum+1:ii+rnum+pnum]有没有优化区间捏
      {                                                                                        //这个判断信号大不大于门限的函数感觉会有一堆分支啥的
          for (int aaa = pnum + 1; aaa <=pnum + rnum; aaa++)                                                     //咋优化, 感觉是不是得换个法子算这玩意
          {
              d_out[i] = d_out[i] + d_signal[i + aaa] + d_signal[i - aaa];
          }
-         d_out[i] = d_out[i] / (float)rnum;
+         d_out[i] = d_out[i] / (double)rnum;
          thold = d_out[i] * k;
          if(d_signal[i]<= thold)
          { 
@@ -188,38 +219,74 @@ void writeData(float *result, long int M, long int N)
      }
  }
 
- void doGpuProcessing(cuFloatComplex* signal, cuFloatComplex* ori, long int M, long int N)
+ void test(cuDoubleComplex* d_signal, int M, int N)
+ {
+     size_t memSize;
+     memSize = M * N * sizeof(double);
+     double* a;
+     cudaMalloc((void**)&a, memSize);
+     cudaMemset(a, 0, memSize);
+     dim3 blockkk, griddd;
+     blockkk.x = 1024;
+     griddd.x = (M * N + blockkk.x - 1) / blockkk.x;
+     rdSquareCopy << <blockkk, griddd >> > (a, d_signal, M, N);
+     printf("test out: ");
+     printGpuModFloat(a);
+     writeData(a, M, N);
+ }
+
+ void printGpuModComplex(cuDoubleComplex *d_signal)
+ {
+     cuDoubleComplex* a;
+     cudaMallocHost((void**)&a, sizeof(cuDoubleComplex));
+     cudaMemcpy(a, d_signal, sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
+     printf("%f   \n", cuCabs(a[0]));
+ }
+ 
+ void printGpuModFloat(double* d_signal)
+ {
+     double* a;
+     cudaMallocHost((void**)&a, sizeof(double));
+     cudaMemcpy(a, d_signal, sizeof(double), cudaMemcpyDeviceToHost);
+     printf("%f\n", a[0]);
+ }
+
+ //if (i == 1) { printf("%f", x); }
+
+ void doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N)
 {
-     size_t memSize = M * N * sizeof(cuFloatComplex);
-     cuFloatComplex* d_signal, * d_ori;
+     
+     size_t memSize = M * N * sizeof(cuDoubleComplex);
+     cuDoubleComplex* d_signal, * d_ori;
      cudaMalloc((void**)&d_signal, memSize);
      cudaMalloc((void**)&d_ori, memSize / M);
      cudaMemcpy(d_signal, signal, memSize, cudaMemcpyHostToDevice);
-     cudaMemcpy(d_ori, ori, memSize, cudaMemcpyHostToDevice);
-     pulseCompression(d_signal, d_ori, M, N);
-     mtd(d_signal, M, N);
+     cudaMemcpy(d_ori, ori, memSize/M, cudaMemcpyHostToDevice);                           //signal和ori弄成gpu的
+     //test(d_ori, 1, N);
 
-     float* d_sqSignal;
+     pulseCompression(d_signal, d_ori, M, N);                                           //脉冲压缩
+     //test(d_signal, M, N);                                                            
+     mtd(d_signal, M, N);                                                               //脉冲压缩的结果送到mtd
+     
+
+     double* d_sqSignal;
      cudaMalloc((void**)&d_sqSignal, memSize);
-     float* d_out;
+     double* d_out;
      cudaMalloc((void**)&d_out, memSize);
-     cudaMemset(d_out, 0, memSize);                                 //咱也不知道有没有意义这一步         有的, 不然边缘的就没赋值了
+     cudaMemset(d_out, 1, memSize);                                 //咱也不知道有没有意义这一步         有的, 不然边缘的就没赋值了
      dim3 block1, grid1;
      block1.x = BLOCKX;
      grid1.x = (M * N + block1.x - 1) / block1.x;
      rdSquareCopy << <block1, grid1 >> > (d_sqSignal, d_signal, M, N);
+     //writeData(d_sqSignal, M, N);
      dim3 block2, grid2;
      block1.x = BLOCKX;
      grid1.x = (M * N + block2.x - 1) / block2.x;
-    int pnum = 4;                                  //保护单元
-    int rnum = 10;                                  // 参考单元
-    float pfa = 1e-6;                                 // 恒虚警率               //这个可以考虑用那个什么什么常量内存啥的
-    float k = powf(pfa, (-1 / (2 * (float)rnum))) - 1;
-    CFAR << <block2, grid2 >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
-
-    float* out;
-    cudaMallocHost((void**)&out, memSize);
-    cudaMemcpy(out, d_out, memSize, cudaMemcpyDeviceToHost);
-    writeData(out, M, N);
-    printf("处理完了, 你真棒 \n");
+     int pnum = 4;                                  //保护单元
+     int rnum = 10;                                  // 参考单元
+     double pfa = 1e-6;                                 // 恒虚警率               //这个可以考虑用那个什么什么常量内存啥的
+     double k = powf(pfa, (-1 / (2 * (double)rnum))) - 1;
+     CFAR << <block2, grid2 >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
+     //writeData(d_out, M, N);
+     printf("处理完了, 你真棒 \n");
 }
