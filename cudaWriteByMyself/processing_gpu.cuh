@@ -14,6 +14,7 @@ __global__ void rdComplexTranspose(cuDoubleComplex* sout, cuDoubleComplex* sin, 
 __global__ void rdSquareCopy(double* sout, cuDoubleComplex* sin, int M, int N);
 void readData(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
 void writeData(double* result, int M, int N);
+void readDataComplex(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
 void pulseCompression(cuDoubleComplex* d_signal, cuDoubleComplex* d_ori, int M, int N);
 void mtd(cuDoubleComplex* d_signal, int M, int N);
 __global__ void CFAR(double *d_out, double* d_signal, int M, int N, int rnum, int prum, double k);
@@ -23,6 +24,8 @@ void doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N
 void test(cuDoubleComplex* d_signal, int M, int N);
 void printGpuModComplex(cuDoubleComplex* d_signal);
 void printGpuModFloat(double* d_signal);
+void makeSmall(cuDoubleComplex* d_signal, int M, int N);
+__global__ void mod1w(cuDoubleComplex* d_signal, int M, int N);
 
 
 
