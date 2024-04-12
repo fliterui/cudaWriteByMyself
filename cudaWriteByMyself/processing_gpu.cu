@@ -107,7 +107,7 @@ void readData(cuDoubleComplex* signal, cuDoubleComplex *ori, int M, int N)      
     fclose(fp);//¹Ø±ÕÎÄ¼þ
     fp = fopen("signal_imag.txt", "r");
     if (fp == NULL)
-        printf("error");
+        printf("error2");
     for (int i = 0; i < M * N; i++)
     {
         fscanf(fp, "%lf", &signal[i].y);
@@ -116,7 +116,7 @@ void readData(cuDoubleComplex* signal, cuDoubleComplex *ori, int M, int N)      
     fclose(fp);
     fp = fopen("ori_real.txt", "r");
     if (fp == NULL)
-        printf("error");
+        printf("error3");
     for (int i = 0; i<N; i++)
     {
         fscanf(fp, "%lf", &ori[i].x);
@@ -125,7 +125,7 @@ void readData(cuDoubleComplex* signal, cuDoubleComplex *ori, int M, int N)      
     fclose(fp);
     fp = fopen("ori_imag.txt", "r");
     if (fp == NULL)
-        printf("error");
+        printf("error4");
     for (int i = 0; i < N; i++)
     {
         fscanf(fp, "%lf", &ori[i].y);
@@ -199,26 +199,18 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
     int rank = 1;
     int ostride = 1;
     cufftHandle plan1;
-    
     //cufftPlanMany(&plan1, rank, number_N, inembed, istride, N, onembed, ostride, N, CUFFT_Z2Z, M);
     cufftPlan1d(&plan1, N, CUFFT_Z2Z, M);
     cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_FORWARD);               //ÐÅºÅfft, ÓÃÀ´¾í»ý
-    //printf("fuck ");
-    //printGpuModComplex(d_signal);
     cufftDestroy(plan1);
-    //test(d_signal, M, N);
     cufftHandle plan2;
     cufftPlan1d(&plan2, N, CUFFT_Z2Z, 1);
     cufftExecZ2Z(plan2, (cufftDoubleComplex*)d_ori, (cufftDoubleComplex*)d_ori, CUFFT_FORWARD);                     //sin fft, ÓÃÀ´¾í»ý
     cufftDestroy(plan2);
-    
     dim3 block, grid;
     block.x = BLOCKX;
     grid.x = (M * N + block.x - 1) / block.x;
-    
     rdComplexMultiply<<<block,grid>>>(d_signal, d_ori, M, N);                                              //³ËÒÔ¹²éîÖ±, Ö±½Ó¸ÄµÄd_signal
-    //test(d_ori, 1, N);                                                                                                                                               //ÎÒÍ»È»·¢ÏÖ,Ëû¶¼Ã»ÓÃ¹ýÁ÷, nvprofºÍÉ¶nightSystemÉ¶µÄÒ²¶¼Ã»·ÖÎö¹ý
-    
     cufftHandle plan3;
     cufftPlan1d(&plan3, N, CUFFT_Z2Z, M);
     cufftExecZ2Z(plan3, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_INVERSE);                                                 //ifft
@@ -344,41 +336,75 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      cudaMalloc((void**)&d_ori, memSize / M);
      cudaMemcpy(d_signal, signal, memSize, cudaMemcpyHostToDevice);
      cudaMemcpy(d_ori, ori, memSize/M, cudaMemcpyHostToDevice);                           //signalºÍoriÅª³ÉgpuµÄ
-     //test(d_signal, M, N);
-     pulseCompression(d_signal, d_ori, M, N);                                           //Âö³åÑ¹Ëõ
-     //writeDataComplex(d_signal, M, N);
-     //makeSmall(d_signal, M, N);
-     //cudaDeviceSynchronize();
-     //test(d_signal, M, N);                                                            
-     //makeSmall(d_signal, M, N);
-     mtd(d_signal, M, N);                                                               //Âö³åÑ¹ËõµÄ½á¹ûËÍµ½mtd
-     //test(d_signal, M, N);
-     double* d_sqSignal;
-     cudaMalloc((void**)&d_sqSignal, memSize);
-     double* d_out;
-     cudaMalloc((void**)&d_out, memSize);
-     cudaMemset(d_out, 1, memSize);                                 //ÔÛÒ²²»ÖªµÀÓÐÃ»ÓÐÒâÒåÕâÒ»²½         ÓÐµÄ, ²»È»±ßÔµµÄ¾ÍÃ»¸³ÖµÁË
+
+     /****************************************************pc**************************************************************/
+
+     int inembed[1] = { 0 };
+     int onembed[1] = { 0 };
+     int number_N[1] = { (int)N };                                         //Õâ²»¸úlongint³åÍ»ÁË
+     int istride = 1;
+     int rank = 1;
+     int ostride = 1;
+     cufftHandle plan1;
+     //cufftPlanMany(&plan1, rank, number_N, inembed, istride, N, onembed, ostride, N, CUFFT_Z2Z, M);
+     cufftPlan1d(&plan1, N, CUFFT_Z2Z, M);
+     cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_FORWARD);               //ÐÅºÅfft, ÓÃÀ´¾í»ý
+     cufftHandle plan2;
+     cufftPlan1d(&plan2, N, CUFFT_Z2Z, 1);
+     cufftExecZ2Z(plan2, (cufftDoubleComplex*)d_ori, (cufftDoubleComplex*)d_ori, CUFFT_FORWARD);                     //sin fft, ÓÃÀ´¾í»ý
      dim3 block1, grid1;
      block1.x = BLOCKX;
      grid1.x = (M * N + block1.x - 1) / block1.x;
-     rdSquareCopy << <block1, grid1 >> > (d_sqSignal, d_signal, M, N);
-     //writeData(d_sqSignal, M, N);
+     rdComplexMultiply << <block1, grid1 >> > (d_signal, d_ori, M, N);                                              //³ËÒÔ¹²éîÖ±, Ö±½Ó¸ÄµÄd_signal
+     //cufftHandle plan3;
+     //cufftPlan1d(&plan3, N, CUFFT_Z2Z, M);
+     cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_INVERSE);                                                 //ifft
+     /***************************************mtd*******************************************************/
+     
      dim3 block2, grid2;
      block2.x = BLOCKX;
      grid2.x = (M * N + block2.x - 1) / block2.x;
+     cuDoubleComplex* dd_signal;
+     cudaMalloc((void**)&dd_signal, memSize);
+     rdComplexTranspose << <block2, grid2 >> > (dd_signal, d_signal, M, N);                                    //ÏÈ×ªÖÃºÃ×öÁÐµÄfft           //Õâ¸öµÃºÝºÝµÄÓÅ»¯
+     //writeDataComplex(dd_signal, M, N);
+     cufftHandle plan3;
+     cufftPlan1d(&plan3, M, CUFFT_Z2Z, N);                                                                                                          //°´ÀíËµfftµãÊýÓ¦¸Ã´óÓÚMÀ´×Å ¼´Ò»°ãk>M
+     cufftExecZ2Z(plan3, (cufftDoubleComplex*)dd_signal, (cufftDoubleComplex*)dd_signal, CUFFT_FORWARD);                                                 //×öfft
+     cufftDestroy(plan3);
+     rdComplexTranspose << <block2, grid2 >> > (d_signal, dd_signal, N, M);                                 //×ªÖÃ»ØÈ¥µÄÊ±ºòÊÇNÁÐMÐÐ, ËùÒÔÊÇN,M!!!!!
+     cudaFree(dd_signal);
+
+     /****************************************************CFAR***********************************************************/
+     size_t memSizeDouble = M * N * sizeof(double);
+     double* d_sqSignal;
+     cudaMalloc((void**)&d_sqSignal, memSizeDouble);
+     double* d_out;
+     cudaMalloc((void**)&d_out, memSizeDouble);
+     cudaMemset(d_out, 0, memSizeDouble);                                 //ÔÛÒ²²»ÖªµÀÓÐÃ»ÓÐÒâÒåÕâÒ»²½         ÓÐµÄ, ²»È»±ßÔµµÄ¾ÍÃ»¸³ÖµÁË
+     dim3 block3, grid3;
+     block3.x = BLOCKX;
+     grid3.x = (M * N + block3.x - 1) / block3.x;
+     rdSquareCopy << <block3, grid3 >> > (d_sqSignal, d_signal, M, N);
+     dim3 block4, grid4;
+     block4.x = BLOCKX;
+     grid4.x = (M * N + block4.x - 1) / block4.x;
      int pnum = 4;                                  //±£»¤µ¥Ôª
      int rnum = 10;                                  // ²Î¿¼µ¥Ôª
      double pfa = 1e-6;                                 // ºãÐé¾¯ÂÊ               //Õâ¸ö¿ÉÒÔ¿¼ÂÇÓÃÄÇ¸öÊ²Ã´Ê²Ã´³£Á¿ÄÚ´æÉ¶µÄ
      double k = powf(pfa, (-1 / (2 * (double)rnum))) - 1;
-     CFAR << <block2, grid2 >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
+     CFAR << <block4, grid4 >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
      QueryPerformanceCounter(&nLastTime2);
      float fInterval = nLastTime2.QuadPart - nLastTime1.QuadPart;
     
      writeData(d_out, M, N);
-     //printf("´¦ÀíÍêÁË, ÄãÕæ°ô \n");
      cudaFree(d_signal);
      cudaFree(d_ori);
      cudaFree(d_sqSignal);
      cudaFree(d_out);
+     cufftDestroy(plan1);
+     cufftDestroy(plan2);
+     cufftDestroy(plan3);
+
      return  fInterval / (float)nFreq.QuadPart;
 }

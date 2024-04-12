@@ -29,6 +29,8 @@ int main()
 		time+=doGpuProcessing(signal, ori, M, N);									
 	}
 	time = time / runNum;
+	cudaFree(signal);
+	cudaFree(ori);
 	printf("\n\naverage run time is: %.6f   \n", time);
 	return 0;
 }
