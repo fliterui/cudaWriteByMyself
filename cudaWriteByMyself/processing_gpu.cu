@@ -1,10 +1,47 @@
 #include "processing_gpu.cuh"
 #include <device_launch_parameters.h>
+
 //#include "matplotlibcpp.h"
 //namespace plt = matplotlibcpp;
 
 #define BLOCKX 1024
 
+void dev_setup(int M,int N)
+{
+    // set up device
+    int dev = 0, driverVersion = 0, runtimeVersion = 0;
+    cudaSetDevice(dev);
+
+    cudaDeviceProp deviceProp;
+    cudaGetDeviceProperties(&deviceProp, dev);
+
+    // check if support mapped memory
+    if (!deviceProp.canMapHostMemory)
+    {
+        printf("Device %d does not support mapping CPU host memory!\n", dev);
+        cudaDeviceReset();
+        exit(EXIT_SUCCESS);
+    }
+
+    printf("  GPUÉè±¸Ãû³Æ                         %s \n", deviceProp.name);
+    printf("  GPUÖÐÁ÷´¦ÀíÆ÷£¨SM£©¸öÊý             %d \n", (int)deviceProp.multiProcessorCount);
+    cudaDriverGetVersion(&driverVersion);
+    cudaRuntimeGetVersion(&runtimeVersion);
+    printf("  CUDA Driver °æ±¾ / Runtime °æ±¾     %d.%d / %d.%d\n",
+        driverVersion / 1000, (driverVersion % 100) / 10,
+        runtimeVersion / 1000, (runtimeVersion % 100) / 10);
+    printf("  CUDA ¼ÆËãÁ¦:                       %d.%d\n",
+        deviceProp.major, deviceProp.minor);
+    printf("  ÏÔ´æ´óÐ¡:                          %.2f GBytes (%llu "
+        "bytes)\n", (float)deviceProp.totalGlobalMem / pow(1024.0, 3),
+        (unsigned long long)deviceProp.totalGlobalMem);
+    printf("  GPU Ê±ÖÓÆµÂÊ:                      %.0f MHz (%0.2f "
+        "GHz)\n", deviceProp.clockRate * 1e-3f,
+        deviceProp.clockRate * 1e-6f);
+    printf("  Memory Ê±ÖÓÆµÂÊ:                   %.0f Mhz\n",
+        deviceProp.memoryClockRate * 1e-3f);
+    printf("  ¾ØÕó¹æÄ££º                         %d * %d\n", M, N);
+}
 
 __global__ void rdComplexMultiply(cuDoubleComplex* s, cuDoubleComplex* w, int M, int N)         //Õâ¸öÊÇnmlgbµÄÂö³åÑ¹Ëõ, ÄÇÄÇ¸öbÆ¥ÅäÂË²¨Æ÷ÊÇ¸ÉÉ¶µÄ
 {
@@ -211,6 +248,7 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      cufftExecZ2Z(plan, (cufftDoubleComplex*)dd_signal, (cufftDoubleComplex*)dd_signal, CUFFT_FORWARD);                                                 //×öfft
      cufftDestroy(plan);
      rdComplexTranspose <<<block, grid >>> (d_signal, dd_signal, N, M);                                 //×ªÖÃ»ØÈ¥µÄÊ±ºòÊÇNÁÐMÐÐ, ËùÒÔÊÇN,M!!!!!
+     cudaFree(dd_signal);
  }
 
 
@@ -252,6 +290,7 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      printf("test out: ");
      printGpuModFloat(a);
      writeData(a, M, N);
+     cudaFree(a);
  }
 
  void printGpuModComplex(cuDoubleComplex  *d_signal)
@@ -260,6 +299,7 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      cudaMallocHost((void**)&a, sizeof(cuDoubleComplex));
      cudaMemcpy(a, d_signal, sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
      printf("%f   \n", cuCabs(a[0]));
+     cudaFree(a);
  }
  
  void printGpuModFloat(double* d_signal)
@@ -289,10 +329,15 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
  }
 
  //if (i == 1) { printf("%f", x); }
-
- void doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N)
+ LARGE_INTEGER nFreq;
+ LARGE_INTEGER nLastTime1;
+ LARGE_INTEGER nLastTime2;
+ static int __count = 0;
+ float doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N)
 {
-     
+     printf("%d ", ++__count);
+     QueryPerformanceFrequency(&nFreq);
+     QueryPerformanceCounter(&nLastTime1);
      size_t memSize = M * N * sizeof(cuDoubleComplex);
      cuDoubleComplex* d_signal, * d_ori;
      cudaMalloc((void**)&d_signal, memSize);
@@ -300,12 +345,10 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      cudaMemcpy(d_signal, signal, memSize, cudaMemcpyHostToDevice);
      cudaMemcpy(d_ori, ori, memSize/M, cudaMemcpyHostToDevice);                           //signalºÍoriÅª³ÉgpuµÄ
      //test(d_signal, M, N);
-
      pulseCompression(d_signal, d_ori, M, N);                                           //Âö³åÑ¹Ëõ
      //writeDataComplex(d_signal, M, N);
-
-     makeSmall(d_signal, M, N);
-     cudaDeviceSynchronize();
+     //makeSmall(d_signal, M, N);
+     //cudaDeviceSynchronize();
      //test(d_signal, M, N);                                                            
      //makeSmall(d_signal, M, N);
      mtd(d_signal, M, N);                                                               //Âö³åÑ¹ËõµÄ½á¹ûËÍµ½mtd
@@ -328,6 +371,14 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      double pfa = 1e-6;                                 // ºãÐé¾¯ÂÊ               //Õâ¸ö¿ÉÒÔ¿¼ÂÇÓÃÄÇ¸öÊ²Ã´Ê²Ã´³£Á¿ÄÚ´æÉ¶µÄ
      double k = powf(pfa, (-1 / (2 * (double)rnum))) - 1;
      CFAR << <block2, grid2 >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
+     QueryPerformanceCounter(&nLastTime2);
+     float fInterval = nLastTime2.QuadPart - nLastTime1.QuadPart;
+    
      writeData(d_out, M, N);
-     printf("´¦ÀíÍêÁË, ÄãÕæ°ô \n");
+     //printf("´¦ÀíÍêÁË, ÄãÕæ°ô \n");
+     cudaFree(d_signal);
+     cudaFree(d_ori);
+     cudaFree(d_sqSignal);
+     cudaFree(d_out);
+     return  fInterval / (float)nFreq.QuadPart;
 }

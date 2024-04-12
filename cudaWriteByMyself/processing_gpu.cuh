@@ -8,7 +8,10 @@
 #include <cufft.h>
 #include <math.h>
 #include <cuComplex.h>
+#include <windows.h>
+
 //#include<pyconfig.h>
+void dev_setup(int M, int N);
 __global__ void rdComplexMultiply(cuDoubleComplex* s, cuDoubleComplex* w, int M, int N);
 __global__ void rdComplexTranspose(cuDoubleComplex* sout, cuDoubleComplex* sin, int M, int N);
 __global__ void rdSquareCopy(double* sout, cuDoubleComplex* sin, int M, int N);
@@ -18,7 +21,7 @@ void readDataComplex(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N
 void pulseCompression(cuDoubleComplex* d_signal, cuDoubleComplex* d_ori, int M, int N);
 void mtd(cuDoubleComplex* d_signal, int M, int N);
 __global__ void CFAR(double *d_out, double* d_signal, int M, int N, int rnum, int prum, double k);
-void doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
+float doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
 
 
 void test(cuDoubleComplex* d_signal, int M, int N);
