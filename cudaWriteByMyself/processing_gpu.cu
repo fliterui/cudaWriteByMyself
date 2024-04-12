@@ -339,14 +339,15 @@ void writeData (double *d_signal, int M, int N)               //’‚∏ˆ ‰»Îµƒ «gpuµ
 
      /****************************************************pc**************************************************************/
 
-     int inembed[1] = { 0 };
+     /*int inembed[1] = {0};
      int onembed[1] = { 0 };
-     int number_N[1] = { (int)N };                                         //’‚≤ª∏˙longint≥ÂÕª¡À
+     int number_N[1] = { N };                                         //’‚≤ª∏˙longint≥ÂÕª¡À
      int istride = 1;
      int rank = 1;
      int ostride = 1;
      cufftHandle plan1;
-     //cufftPlanMany(&plan1, rank, number_N, inembed, istride, N, onembed, ostride, N, CUFFT_Z2Z, M);
+     cufftPlanMany(&plan1, rank, number_N, inembed, istride, N, onembed, ostride, N, CUFFT_Z2Z, M);*/
+     cufftHandle plan1;
      cufftPlan1d(&plan1, N, CUFFT_Z2Z, M);
      cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_FORWARD);               //–≈∫≈fft, ”√¿¥æÌª˝
      cufftHandle plan2;
@@ -360,20 +361,33 @@ void writeData (double *d_signal, int M, int N)               //’‚∏ˆ ‰»Îµƒ «gpuµ
      //cufftPlan1d(&plan3, N, CUFFT_Z2Z, M);
      cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_INVERSE);                                                 //ifft
      /***************************************mtd*******************************************************/
-     
+     /*
+     * ”√ƒ«∏ˆæÿ’Û±»”√manyøÏ¡À0.002√Î...
+     */
      dim3 block2, grid2;
      block2.x = BLOCKX;
      grid2.x = (M * N + block2.x - 1) / block2.x;
      cuDoubleComplex* dd_signal;
      cudaMalloc((void**)&dd_signal, memSize);
      rdComplexTranspose << <block2, grid2 >> > (dd_signal, d_signal, M, N);                                    //œ»◊™÷√∫√◊ˆ¡–µƒfft           //’‚∏ˆµ√∫›∫›µƒ”≈ªØ
-     //writeDataComplex(dd_signal, M, N);
      cufftHandle plan3;
      cufftPlan1d(&plan3, M, CUFFT_Z2Z, N);                                                                                                          //∞¥¿ÌÀµfftµ„ ˝”¶∏√¥Û”⁄M¿¥◊≈ º¥“ª∞„k>M
      cufftExecZ2Z(plan3, (cufftDoubleComplex*)dd_signal, (cufftDoubleComplex*)dd_signal, CUFFT_FORWARD);                                                 //◊ˆfft
      cufftDestroy(plan3);
      rdComplexTranspose << <block2, grid2 >> > (d_signal, dd_signal, N, M);                                 //◊™÷√ªÿ»•µƒ ±∫Ú «N¡–M––, À˘“‘ «N,M!!!!!
      cudaFree(dd_signal);
+     /*int inembed[1] = {0};
+     int onembed[1] = { 0 };
+     int number_M[1] = { M };                                         
+     int istride = N;
+     int idist = 1;
+     int rank = 1;
+     int ostride = N;
+     int odist = 1;
+     cufftHandle plan3;
+     cufftPlanMany(&plan3, rank, number_M, inembed, istride, idist, onembed, ostride, odist, CUFFT_Z2Z, N);
+     cufftExecZ2Z(plan3, d_signal, d_signal, CUFFT_FORWARD);
+     cufftDestroy(plan3);*/
 
      /****************************************************CFAR***********************************************************/
      size_t memSizeDouble = M * N * sizeof(double);
