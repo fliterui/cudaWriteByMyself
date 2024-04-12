@@ -36,6 +36,7 @@ int main()
 }
 
 /*warmup
+* 好像cudaMalloc ori和cudaMemcpy ori可以和pc的d_signal的fft并行
 * 块和网格结构 
 * 瘦块
 * 看看那些规约, 循环展开
