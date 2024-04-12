@@ -374,7 +374,7 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      QueryPerformanceCounter(&nLastTime2);
      float fInterval = nLastTime2.QuadPart - nLastTime1.QuadPart;
     
-     writeData(d_out, M, N);
+     //writeData(d_out, M, N);
      //printf("´¦ÀíÍêÁË, ÄãÕæ°ô \n");
      cudaFree(d_signal);
      cudaFree(d_ori);

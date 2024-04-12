@@ -23,7 +23,7 @@ int main()
 	readData(signal, ori, M, N);															//读matlab的回波信号, 然后直接传给doGpuProcessing, 在那里面cudaMalloc
 	//printf("%lf", cuCreal(ori[1]));
 	float time = 0;
-	int runNum = 500;
+	int runNum = 1000;
 	for (int i = 0; i < runNum; i++)
 	{
 		time+=doGpuProcessing(signal, ori, M, N);									
