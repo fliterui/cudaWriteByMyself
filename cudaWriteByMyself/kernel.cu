@@ -36,6 +36,8 @@ int main()
 }
 
 /*warmup
+* 你别说, 传数据也可以异步, 把signal分成几块, 弄多个流, 同时传是不是能快点
+* 记得提一下那个结果的纵坐标是干啥的, 咋给他修一下, 整的都好几十万的值, 就离谱
 * 好像cudaMalloc ori和cudaMemcpy ori可以和pc的d_signal的fft并行
 * 块和网格结构 
 * 瘦块
