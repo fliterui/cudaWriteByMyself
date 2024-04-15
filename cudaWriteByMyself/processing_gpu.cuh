@@ -19,10 +19,10 @@ __global__ void rdSquareCopy(double* sout, cuDoubleComplex* sin, int M, int N);
 void readData(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
 void writeData(double* result, int M, int N);
 void readDataComplex(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
-void pulseCompression(cuDoubleComplex* d_signal, cuDoubleComplex* d_ori, int M, int N);
-void mtd(cuDoubleComplex* d_signal, int M, int N);
+void pulseCompression(cuDoubleComplex* d_signal, cuDoubleComplex* d_ori, int M, int N, dim3 grid, dim3 block);
+void mtd(cuDoubleComplex* d_signal, int M, int N, dim3 grid1, dim3 block1, dim3 grid2, dim3 block2);
 __global__ void CFAR(double *d_out, double* d_signal, int M, int N, int rnum, int prum, double k);
-float doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
+float doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N, dim3 *grid, dim3 *block);
 
 /*
 void test(cuDoubleComplex* d_signal, int M, int N);

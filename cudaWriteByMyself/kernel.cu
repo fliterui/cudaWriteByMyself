@@ -11,6 +11,11 @@
 #include "processing_gpu.cuh"
 //#include "matplotlibcpp.h"
 //namespace plt = matplotlibcpp;
+
+__global__ void warmup()
+{
+
+}
 int main()
 {												
 	int M = 64, N = 4000;																//M行 N列
@@ -22,13 +27,60 @@ int main()
 	readData(signal, ori, M, N);															//读matlab的回波信号, 然后直接传给doGpuProcessing, 在那里面cudaMalloc
 	//printf("%lf", cuCreal(ori[1]));
 	float time = 0;
-	int runNum = 1000;
+	float best_time = 1000;
+	int runNum = 100;
+	dim3 block[5], grid[5], bestBlock, bestGrid;
+	block[0].x = 1024;
+	block[1].x = 1024;
+	block[2].x = 1024;
+	block[3].x = 1024;
+	block[4].x = 1024;
+	for (int k = 0; k < 5; k++)
+	{
+		grid[k] = (M * N + block[1].x - 1) / block[1].x;
+	}
+	
+
+
+	warmup << <1, 1 >> > ();
+	for (int m = 0; m < 5; m++)
+	{
+		bestBlock.x = 1024;
+		bestGrid.x = (M * N + bestBlock.x - 1) / bestBlock.x;					//这两行好像没啥用, 因为肯定在1024的时候best_time > time
+		best_time = 1000;
+		for(int n = 0; n < 8; n++)												//每个global是各自独立的所以一个一个找就行了
+		{
+			for (int i = 0; i < runNum; i++)
+			{
+				time+=doGpuProcessing(signal, ori, M, N, grid, block);									
+			}
+			time = time / runNum;
+			if (best_time > time)
+			{
+				bestBlock = block[m];
+				bestGrid = grid[m];
+				best_time = time;
+			}
+			printf("average run time is: %.6f  \n", time);
+			block[m] = block[m].x / 2;
+			grid[m] = (M * N + block[m].x - 1) / block[m].x;
+		}
+		block[m] = bestBlock;
+		grid[m] = bestGrid;
+		printf("index: %d, bestBlock: %d, bestGrid: %d, bestTime: %f \n\n\n", m, bestBlock.x, bestGrid.x, best_time);
+	}
+	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+	runNum = 1000;
 	for (int i = 0; i < runNum; i++)
 	{
-		time+=doGpuProcessing(signal, ori, M, N);									
+		time += doGpuProcessing(signal, ori, M, N, grid, block);
 	}
 	time = time / runNum;
-	printf("\n\naverage run time is: %.6f   \n", time);
+	printf("\naverage run time is: %.6f  \n", time);
+	for (int i = 0; i < 5; i++)
+	{
+		printf("%d, block: %d, grid: %d\n", i, block[i].x, grid[i].x);
+	}
 	return 0;
 }
 
