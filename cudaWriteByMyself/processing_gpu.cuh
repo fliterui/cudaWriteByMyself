@@ -9,6 +9,7 @@
 #include <math.h>
 #include <cuComplex.h>
 #include <windows.h>
+#include"doDebug.cuh"
 
 //#include<pyconfig.h>
 void dev_setup(int M, int N);
@@ -23,13 +24,13 @@ void mtd(cuDoubleComplex* d_signal, int M, int N);
 __global__ void CFAR(double *d_out, double* d_signal, int M, int N, int rnum, int prum, double k);
 float doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
 
-
+/*
 void test(cuDoubleComplex* d_signal, int M, int N);
 void printGpuModComplex(cuDoubleComplex* d_signal);
 void printGpuModFloat(double* d_signal);
 void makeSmall(cuDoubleComplex* d_signal, int M, int N);
 __global__ void mod1w(cuDoubleComplex* d_signal, int M, int N);
-
+*/
 
 
 

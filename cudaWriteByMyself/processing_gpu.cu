@@ -4,7 +4,7 @@
 //#include "matplotlibcpp.h"
 //namespace plt = matplotlibcpp;
 
-#define BLOCKX 1024
+#define BLOCKX 256
 
 void dev_setup(int M,int N)
 {
@@ -215,8 +215,8 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
     dim3 block, grid;
     block.x = BLOCKX;
     grid.x = (M * N + block.x - 1) / block.x;
-    
-    rdComplexMultiply<<<block,grid>>>(d_signal, d_ori, M, N);                                              //³ËÒÔ¹²éîÖ±, Ö±½Ó¸ÄµÄd_signal
+    //printf("%d, %d \n", block.x, grid.x);
+    rdComplexMultiply<<<grid, block >>>(d_signal, d_ori, M, N);                                              //³ËÒÔ¹²éîÖ±, Ö±½Ó¸ÄµÄd_signal
     //test(d_ori, 1, N);                                                                                                                                               //ÎÒÍ»È»·¢ÏÖ,Ëû¶¼Ã»ÓÃ¹ıÁ÷, nvprofºÍÉ¶nightSystemÉ¶µÄÒ²¶¼Ã»·ÖÎö¹ı
     
     cufftHandle plan3;
@@ -241,13 +241,13 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      cuDoubleComplex* dd_signal;
      size_t memSize = M * N * sizeof(cuDoubleComplex);
      cudaMalloc((void**)&dd_signal, memSize);
-     rdComplexTranspose <<<block, grid >>> (dd_signal, d_signal, M, N);                                    //ÏÈ×ªÖÃºÃ×öÁĞµÄfft           //Õâ¸öµÃºİºİµÄÓÅ»¯
+     rdComplexTranspose <<< grid, block >>> (dd_signal, d_signal, M, N);                                    //ÏÈ×ªÖÃºÃ×öÁĞµÄfft           //Õâ¸öµÃºİºİµÄÓÅ»¯
      //writeDataComplex(dd_signal, M, N);
      cufftHandle plan;
      cufftPlan1d(&plan,M,CUFFT_Z2Z,N);                                                                                                          //°´ÀíËµfftµãÊıÓ¦¸Ã´óÓÚMÀ´×Å ¼´Ò»°ãk>M
      cufftExecZ2Z(plan, (cufftDoubleComplex*)dd_signal, (cufftDoubleComplex*)dd_signal, CUFFT_FORWARD);                                                 //×öfft
      cufftDestroy(plan);
-     rdComplexTranspose <<<block, grid >>> (d_signal, dd_signal, N, M);                                 //×ªÖÃ»ØÈ¥µÄÊ±ºòÊÇNÁĞMĞĞ, ËùÒÔÊÇN,M!!!!!
+     rdComplexTranspose <<< grid, block >>> (d_signal, dd_signal, N, M);                                 //×ªÖÃ»ØÈ¥µÄÊ±ºòÊÇNÁĞMĞĞ, ËùÒÔÊÇN,M!!!!!
      cudaFree(dd_signal);
  }
 
@@ -271,11 +271,11 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
          thold = d_out[i] * k;
          if(d_signal[i]<= thold)
          { 
-             d_out[i] = 0;                                                                      //¾ÍÊÇ·´¹ıÀ´Âï, ´óÓÚÃÅÏŞµÄ±£Áô, Ğ¡ÓÚµÄÇåÁã
+             d_out[i] = 0;                                                                      //¾ÍÊÇ·´¹ıÀ´Âï, ´óÓÚÃÅÏŞµÄ±£Áô, Ğ¡ÓÚµÄÇåÁã    //¸Ğ¾õÕâÒ²ÓĞÓÅ»¯¿Õ¼ä
          }
      }
  }
-
+ /*
  void test(cuDoubleComplex* d_signal, int M, int N)
  {
      size_t memSize;
@@ -286,7 +286,7 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      dim3 blockkk, griddd;
      blockkk.x = 1024;
      griddd.x = (M * N + blockkk.x - 1) / blockkk.x;
-     rdSquareCopy << <blockkk, griddd >> > (a, d_signal, M, N);
+     rdSquareCopy << < griddd, blockkk >> > (a, d_signal, M, N);
      printf("test out: ");
      printGpuModFloat(a);
      writeData(a, M, N);
@@ -327,15 +327,14 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
          d_signal[i] = make_cuDoubleComplex(cuCreal(d_signal[i]) / 100000, cuCimag(d_signal[i]) / 100000);
      }
  }
-
- //if (i == 1) { printf("%f", x); }
+ */
  LARGE_INTEGER nFreq;
  LARGE_INTEGER nLastTime1;
  LARGE_INTEGER nLastTime2;
  static int __count = 0;
  float doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N)
 {
-     printf("%d ", ++__count);
+     //printf("%d ", ++__count);
      QueryPerformanceFrequency(&nFreq);
      QueryPerformanceCounter(&nLastTime1);
      size_t memSize = M * N * sizeof(cuDoubleComplex);
@@ -361,8 +360,7 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      dim3 block1, grid1;
      block1.x = BLOCKX;
      grid1.x = (M * N + block1.x - 1) / block1.x;
-     rdSquareCopy << <block1, grid1 >> > (d_sqSignal, d_signal, M, N);
-     //writeData(d_sqSignal, M, N);
+     rdSquareCopy << < grid1, block1 >> > (d_sqSignal, d_signal, M, N);
      dim3 block2, grid2;
      block2.x = BLOCKX;
      grid2.x = (M * N + block2.x - 1) / block2.x;
@@ -370,7 +368,7 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      int rnum = 10;                                  // ²Î¿¼µ¥Ôª
      double pfa = 1e-6;                                 // ºãĞé¾¯ÂÊ               //Õâ¸ö¿ÉÒÔ¿¼ÂÇÓÃÄÇ¸öÊ²Ã´Ê²Ã´³£Á¿ÄÚ´æÉ¶µÄ
      double k = powf(pfa, (-1 / (2 * (double)rnum))) - 1;
-     CFAR << <block2, grid2 >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
+     CFAR << < grid2, block2 >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
      QueryPerformanceCounter(&nLastTime2);
      float fInterval = nLastTime2.QuadPart - nLastTime1.QuadPart;
     

@@ -1,0 +1,7 @@
+GPU Speed Of Light Throughput
+说能不能给整成float(fp32)
+double类型(fp64)的表现是37%低于fp64 pipe line utilization
+
+
+Compute Workload Analysis
+pipe利用率太高了?
