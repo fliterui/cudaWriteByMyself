@@ -12,8 +12,7 @@
 //#include "matplotlibcpp.h"
 //namespace plt = matplotlibcpp;
 int main()
-{
-																			
+{															
 	int M = 64, N = 4000;																//M行 N列
 	dev_setup(M, N);
 	size_t memSize = M * N * sizeof(cuDoubleComplex);
@@ -32,7 +31,7 @@ int main()
 	printf("\n\naverage run time is: %.6f   \n", time);
 	return 0;
 }
-
+ 
 /*warmup
 * 你别说, 传数据也可以异步, 把signal分成几块, 弄多个流, 同时传是不是能快点
 * 好像cudaMalloc ori和cudaMemcpy ori可以和pc的d_signal的fft并行
