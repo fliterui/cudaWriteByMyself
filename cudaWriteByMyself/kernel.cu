@@ -12,8 +12,7 @@
 //#include "matplotlibcpp.h"
 //namespace plt = matplotlibcpp;
 int main()
-{
-																			
+{												
 	int M = 64, N = 4000;																//M行 N列
 	dev_setup(M, N);
 	size_t memSize = M * N * sizeof(cuDoubleComplex);
