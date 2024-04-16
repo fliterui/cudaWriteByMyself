@@ -4,7 +4,7 @@
 //#include "matplotlibcpp.h"
 //namespace plt = matplotlibcpp;
 
-#define BLOCKX 256
+//#define BLOCKX 256
 
 void dev_setup(int M,int N)
 {
@@ -251,6 +251,27 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      cudaFree(dd_signal);
  }
 
+ void betterMtd(cuDoubleComplex* d_signal, int M, int N, dim3 grid1, dim3 block1, dim3 grid2, dim3 block2)
+ {
+     /*cuDoubleComplex* signal;
+     size_t memSize = M* N * sizeof(cuDoubleComplex);
+     cudaMalloc((void**)&signal, memSize);
+     cudaMemcpy(signal, d_signal, memSize, cudaMemcpyDeviceToDevice);                                                                         //²»¶Ô, ºóÃæ»¹µÃ×ªÖÃ»ØÈ¥, cfarÒªÓÃmtdµÄ½á¹û*/
+     // block, grid;
+     //block.x = BLOCKX;
+     //grid.x = (M * N + block.x - 1) / block.x;
+     cuDoubleComplex* dd_signal;
+     size_t memSize = M * N * sizeof(cuDoubleComplex);
+     cudaMalloc((void**)&dd_signal, memSize);
+     //rdComplexTranspose << < grid1, block1 >> > (dd_signal, d_signal, M, N);                                    //ÏÈ×ªÖÃºÃ×öÁÐµÄfft           //Õâ¸öµÃºÝºÝµÄÓÅ»¯
+     //writeDataComplex(dd_signal, M, N);
+     cufftHandle plan;
+     cufftPlan1d(&plan, M, CUFFT_Z2Z, N);                                                                                                          //°´ÀíËµfftµãÊýÓ¦¸Ã´óÓÚMÀ´×Å ¼´Ò»°ãk>M
+     cufftExecZ2Z(plan, (cufftDoubleComplex*)dd_signal, (cufftDoubleComplex*)dd_signal, CUFFT_FORWARD);                                                 //×öfft
+     cufftDestroy(plan);
+     //rdComplexTranspose << < grid2, block2 >> > (d_signal, dd_signal, N, M);                                 //×ªÖÃ»ØÈ¥µÄÊ±ºòÊÇNÁÐMÐÐ, ËùÒÔÊÇN,M!!!!!
+     cudaFree(dd_signal);
+ }
 
  /*CFAR
 * d_signalÊÇ»Ø²¨, d_oriÊÇsinÐÅºÅ, M, NÊÇÐÅºÅµÄMÐÐNÁÐ, rnumÊÇ²Î¿¼µ¥Ôª¸öÊý, pnumÊÇ±£»¤µ¥Ôª¸öÊý, kÊÇÄÄ¸ö³ËÔÚ¹¦ÂÊÆ½¾ùÖµÉÏµÄÄÇ¸öÏµÊý(¸ù¾ÝpfaËãÍêÁËµÄÄÇ¸ö)
@@ -402,3 +423,74 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      cudaFree(d_out);
      return  fInterval / (float)nFreq.QuadPart;
 }
+
+ float goodTransDoGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N, dim3* grid, dim3* block)
+ {
+
+     //printf("%d ", ++__count);
+     QueryPerformanceFrequency(&nFreq);
+     QueryPerformanceCounter(&nLastTime1);
+     size_t memSize = M * N * sizeof(cuDoubleComplex);
+     cuDoubleComplex* d_signal, * d_ori;
+     cudaMalloc((void**)&d_signal, memSize);
+     cudaMalloc((void**)&d_ori, memSize / M);
+     //eee                     //signalºÍoriÅª³ÉgpuµÄ
+     ///////////////////////////////ÎªÁË·½±ã°ÑÂö³åÑ¹ËõµÄº¯Êý²ð¿ªÁË////////////////
+     //pulseCompression(d_signal, d_ori, M, N, grid[0], block[0]);                                           //Âö³åÑ¹Ëõ
+
+     cudaStream_t ps1;
+     cudaStream_t ps2;
+     cudaStreamCreateWithFlags(&ps1, cudaStreamNonBlocking);
+     cudaStreamCreateWithFlags(&ps2, cudaStreamNonBlocking);
+     cudaMemcpyAsync(d_signal, signal, memSize, cudaMemcpyHostToDevice, ps1);
+     cudaMemcpyAsync(d_ori, ori, memSize / M, cudaMemcpyHostToDevice, ps2);
+
+     cufftHandle plan1;
+     cufftSetStream(plan1, ps1);
+     cufftHandle plan2;
+     cufftSetStream(plan2, ps2);
+     cufftPlan1d(&plan1, N, CUFFT_Z2Z, M);
+     cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_FORWARD);               //ÐÅºÅfft, ÓÃÀ´¾í»ý
+     cufftDestroy(plan1);
+
+     cufftPlan1d(&plan2, N, CUFFT_Z2Z, 1);
+     cufftExecZ2Z(plan2, (cufftDoubleComplex*)d_ori, (cufftDoubleComplex*)d_ori, CUFFT_FORWARD);                     //sin fft, ÓÃÀ´¾í»ý
+     cufftDestroy(plan2);
+     cudaStreamDestroy(ps1);
+     cudaStreamDestroy(ps2);
+     rdComplexMultiply << <grid[0], block[0] >> > (d_signal, d_ori, M, N);                                              //³ËÒÔ¹²éîÖ±, Ö±½Ó¸ÄµÄd_signal
+     cufftHandle plan3;
+     cufftPlan1d(&plan3, N, CUFFT_Z2Z, M);
+     cufftExecZ2Z(plan3, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_INVERSE);                                                 //ifft
+     cufftDestroy(plan3);
+     ////////////////////////////////////////////////////////////////////////////////
+     betterMtd(d_signal, M, N, grid[1], block[1], grid[2], block[2]);                                                               //Âö³åÑ¹ËõµÄ½á¹ûËÍµ½mtd
+     //test(d_signal, M, N);
+     double* d_sqSignal;
+     cudaMalloc((void**)&d_sqSignal, memSize);
+     double* d_out;
+     cudaMalloc((void**)&d_out, memSize);
+     cudaMemset(d_out, 1, memSize);                                 //ÔÛÒ²²»ÖªµÀÓÐÃ»ÓÐÒâÒåÕâÒ»²½         ÓÐµÄ, ²»È»±ßÔµµÄ¾ÍÃ»¸³ÖµÁË
+     //dim3 block1, grid1;
+     //block1.x = BLOCKX;
+     //grid1.x = (M * N + block1.x - 1) / block1.x;
+     rdSquareCopy << < grid[3], block[3] >> > (d_sqSignal, d_signal, M, N);
+     //dim3 block2, grid2;
+     //block2.x = BLOCKX;
+     //grid2.x = (M * N + block2.x - 1) / block2.x;
+     int pnum = 4;                                  //±£»¤µ¥Ôª
+     int rnum = 10;                                  // ²Î¿¼µ¥Ôª
+     double pfa = 1e-6;                                 // ºãÐé¾¯ÂÊ               //Õâ¸ö¿ÉÒÔ¿¼ÂÇÓÃÄÇ¸öÊ²Ã´Ê²Ã´³£Á¿ÄÚ´æÉ¶µÄ
+     double k = powf(pfa, (-1 / (2 * (double)rnum))) - 1;
+     CFAR << < grid[4], block[4] >> > (d_out, d_sqSignal, M, N, rnum, pnum, k);
+     QueryPerformanceCounter(&nLastTime2);
+     float fInterval = nLastTime2.QuadPart - nLastTime1.QuadPart;
+
+     //writeData(d_out, M, N);
+     //printf("´¦ÀíÍêÁË, ÄãÕæ°ô \n");
+     cudaFree(d_signal);
+     cudaFree(d_ori);
+     cudaFree(d_sqSignal);
+     cudaFree(d_out);
+     return  fInterval / (float)nFreq.QuadPart;
+ }

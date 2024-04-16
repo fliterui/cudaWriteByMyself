@@ -20,7 +20,7 @@ int main()
 {												
 	int M = 64, N = 4000;																//M行 N列
 	dev_setup(M, N);
-	size_t memSize = M * N * sizeof(cuDoubleComplex);
+	size_t memSize =  M * N * sizeof(cuDoubleComplex);
 	cuDoubleComplex* signal, * ori;
 	cudaMallocHost((void**)&signal, memSize);												//用固定内存能快点, 在cpy的时候
 	cudaMallocHost((void**)&ori, memSize/M);
@@ -29,6 +29,7 @@ int main()
 	float time = 0;
 	float ori_time = 0;
 	float best_time = 1000;
+	float better_time = 0;
 	int runNum = 100;
 	dim3 block[5], grid[5], bestBlock, bestGrid;
 	block[0].x = 1024;
@@ -58,7 +59,7 @@ int main()
 	printf("\naverage run time is: %.6f  \n", ori_time);
 	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%优化中%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 
-
+	runNum = 500;
 	for (int m = 0; m < 5; m++)
 	{
 		bestBlock.x = 1024;
@@ -72,7 +73,7 @@ int main()
 				time+=doGpuProcessing(signal, ori, M, N, grid, block);									
 			}
 			time = time / runNum;
-			printf("%d   ", block[m].x);
+			//printf("%d   ", block[m].x);
 			if (best_time > time)
 			{
 				bestBlock = block[m];
@@ -103,6 +104,13 @@ int main()
 	}
 
 	printf("快了: %f", ori_time - time);
+	for (int i = 0; i < runNum; i++)
+	{
+		better_time += doGpuProcessing(signal, ori, M, N, grid, block);
+	}
+	better_time = better_time / runNum;
+	printf("\naverage run time is: %.6f  \n", better_time);
+	printf("快了: %f", time - better_time);
 	return 0;
 }
 
