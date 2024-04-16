@@ -131,7 +131,7 @@ void readData(cuDoubleComplex* signal, cuDoubleComplex *ori, int M, int N)      
         fscanf(fp, "%lf", &ori[i].y);
     }
     fclose(fp);
-    printf("¶ÁÍêÁË, ÄãÕæ°ô! \n");
+    printf("¶ÁÍêÁË! \n");
 }
 
 void writeDataComplex(cuDoubleComplex* d_signal, int M, int N)                    
@@ -334,6 +334,7 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
  static int __count = 0;
  float doGpuProcessing(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N, dim3* grid, dim3* block)
 {
+
      //printf("%d ", ++__count);
      QueryPerformanceFrequency(&nFreq);
      QueryPerformanceCounter(&nLastTime1);
@@ -341,15 +342,36 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      cuDoubleComplex* d_signal, * d_ori;
      cudaMalloc((void**)&d_signal, memSize);
      cudaMalloc((void**)&d_ori, memSize / M);
-     cudaMemcpy(d_signal, signal, memSize, cudaMemcpyHostToDevice);
-     cudaMemcpy(d_ori, ori, memSize/M, cudaMemcpyHostToDevice);                           //signalºÍoriÅª³ÉgpuµÄ
-     //test(d_signal, M, N);
-     pulseCompression(d_signal, d_ori, M, N, grid[0], block[0]);                                           //Âö³åÑ¹Ëõ
-     //writeDataComplex(d_signal, M, N);
-     //makeSmall(d_signal, M, N);
-     //cudaDeviceSynchronize();
-     //test(d_signal, M, N);                                                            
-     //makeSmall(d_signal, M, N);
+     //eee                     //signalºÍoriÅª³ÉgpuµÄ
+     ///////////////////////////////ÎªÁË·½±ã°ÑÂö³åÑ¹ËõµÄº¯Êý²ð¿ªÁË////////////////
+     //pulseCompression(d_signal, d_ori, M, N, grid[0], block[0]);                                           //Âö³åÑ¹Ëõ
+
+     cudaStream_t ps1;
+     cudaStream_t ps2;
+     cudaStreamCreateWithFlags(&ps1, cudaStreamNonBlocking);
+     cudaStreamCreateWithFlags(&ps2, cudaStreamNonBlocking);
+     cudaMemcpyAsync(d_signal, signal, memSize, cudaMemcpyHostToDevice, ps1);
+     cudaMemcpyAsync(d_ori, ori, memSize / M, cudaMemcpyHostToDevice, ps2);
+
+     cufftHandle plan1;
+     cufftSetStream(plan1, ps1);
+     cufftHandle plan2;
+     cufftSetStream(plan2, ps2);
+     cufftPlan1d(&plan1, N, CUFFT_Z2Z, M);
+     cufftExecZ2Z(plan1, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_FORWARD);               //ÐÅºÅfft, ÓÃÀ´¾í»ý
+     cufftDestroy(plan1);
+     
+     cufftPlan1d(&plan2, N, CUFFT_Z2Z, 1);
+     cufftExecZ2Z(plan2, (cufftDoubleComplex*)d_ori, (cufftDoubleComplex*)d_ori, CUFFT_FORWARD);                     //sin fft, ÓÃÀ´¾í»ý
+     cufftDestroy(plan2);
+     cudaStreamDestroy(ps1);
+     cudaStreamDestroy(ps2);
+     rdComplexMultiply <<<grid[0], block[0] >>> (d_signal, d_ori, M, N);                                              //³ËÒÔ¹²éîÖ±, Ö±½Ó¸ÄµÄd_signal
+     cufftHandle plan3;
+     cufftPlan1d(&plan3, N, CUFFT_Z2Z, M);
+     cufftExecZ2Z(plan3, (cufftDoubleComplex*)d_signal, (cufftDoubleComplex*)d_signal, CUFFT_INVERSE);                                                 //ifft
+     cufftDestroy(plan3);
+     ////////////////////////////////////////////////////////////////////////////////
      mtd(d_signal, M, N, grid[1], block[1], grid[2], block[2]);                                                               //Âö³åÑ¹ËõµÄ½á¹ûËÍµ½mtd
      //test(d_signal, M, N);
      double* d_sqSignal;
@@ -357,13 +379,13 @@ void writeData (double *d_signal, int M, int N)               //Õâ¸öÊäÈëµÄÊÇgpuµ
      double* d_out;
      cudaMalloc((void**)&d_out, memSize);
      cudaMemset(d_out, 1, memSize);                                 //ÔÛÒ²²»ÖªµÀÓÐÃ»ÓÐÒâÒåÕâÒ»²½         ÓÐµÄ, ²»È»±ßÔµµÄ¾ÍÃ»¸³ÖµÁË
-     dim3 block1, grid1;
-     block1.x = BLOCKX;
-     grid1.x = (M * N + block1.x - 1) / block1.x;
+     //dim3 block1, grid1;
+     //block1.x = BLOCKX;
+     //grid1.x = (M * N + block1.x - 1) / block1.x;
      rdSquareCopy <<< grid[3], block[3] >>> (d_sqSignal, d_signal, M, N);
-     dim3 block2, grid2;
-     block2.x = BLOCKX;
-     grid2.x = (M * N + block2.x - 1) / block2.x;
+     //dim3 block2, grid2;
+     //block2.x = BLOCKX;
+     //grid2.x = (M * N + block2.x - 1) / block2.x;
      int pnum = 4;                                  //±£»¤µ¥Ôª
      int rnum = 10;                                  // ²Î¿¼µ¥Ôª
      double pfa = 1e-6;                                 // ºãÐé¾¯ÂÊ               //Õâ¸ö¿ÉÒÔ¿¼ÂÇÓÃÄÇ¸öÊ²Ã´Ê²Ã´³£Á¿ÄÚ´æÉ¶µÄ

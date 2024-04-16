@@ -27,6 +27,7 @@ int main()
 	readData(signal, ori, M, N);															//读matlab的回波信号, 然后直接传给doGpuProcessing, 在那里面cudaMalloc
 	//printf("%lf", cuCreal(ori[1]));
 	float time = 0;
+	float ori_time = 0;
 	float best_time = 1000;
 	int runNum = 100;
 	dim3 block[5], grid[5], bestBlock, bestGrid;
@@ -43,6 +44,21 @@ int main()
 
 
 	warmup << <1, 1 >> > ();
+	float shabi = doGpuProcessing(signal, ori, M, N, grid, block);
+	printf("shabi %f", shabi);
+
+
+	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%优化前%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+	runNum = 1000;
+	for (int i = 0; i < runNum; i++)
+	{
+		ori_time += doGpuProcessing(signal, ori, M, N, grid, block);
+	}
+	ori_time = ori_time / runNum;
+	printf("\naverage run time is: %.6f  \n", ori_time);
+	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%优化中%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+
+
 	for (int m = 0; m < 5; m++)
 	{
 		bestBlock.x = 1024;
@@ -50,26 +66,30 @@ int main()
 		best_time = 1000;
 		for(int n = 0; n < 8; n++)												//每个global是各自独立的所以一个一个找就行了
 		{
+			
 			for (int i = 0; i < runNum; i++)
 			{
 				time+=doGpuProcessing(signal, ori, M, N, grid, block);									
 			}
 			time = time / runNum;
+			printf("%d   ", block[m].x);
 			if (best_time > time)
 			{
 				bestBlock = block[m];
 				bestGrid = grid[m];
 				best_time = time;
 			}
+			printf("%d   ", bestBlock.x);
 			printf("average run time is: %.6f  \n", time);
 			block[m] = block[m].x / 2;
 			grid[m] = (M * N + block[m].x - 1) / block[m].x;
+			
 		}
 		block[m] = bestBlock;
 		grid[m] = bestGrid;
 		printf("index: %d, bestBlock: %d, bestGrid: %d, bestTime: %f \n\n\n", m, bestBlock.x, bestGrid.x, best_time);
 	}
-	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%优化后%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 	runNum = 1000;
 	for (int i = 0; i < runNum; i++)
 	{
@@ -81,6 +101,8 @@ int main()
 	{
 		printf("%d, block: %d, grid: %d\n", i, block[i].x, grid[i].x);
 	}
+
+	printf("快了: %f", ori_time - time);
 	return 0;
 }
 
