@@ -21,9 +21,6 @@
     <ClInclude Include="processing_gpu.cuh">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="matplotlibcpp.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="doDebug.cuh">
       <Filter>头文件</Filter>
     </ClInclude>

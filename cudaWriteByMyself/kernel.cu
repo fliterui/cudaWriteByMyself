@@ -12,10 +12,7 @@
 //#include "matplotlibcpp.h"
 //namespace plt = matplotlibcpp;
 
-__global__ void warmup()
-{
 
-}
 int main()
 {												
 	int M = 64, N = 4000;																//M行 N列
@@ -43,12 +40,11 @@ int main()
 	
 
 
-	warmup << <1, 1 >> > ();
-	float shabi = doGpuProcessing(signal, ori, M, N, grid, block);
-	printf("shabi %f", shabi);
+	float ttttt = doGpuProcessing(signal, ori, M, N, grid, block);
+	printf("warmup %f", ttttt);
 
 
-	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%优化前%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 	runNum = 1000;
 	for (int i = 0; i < runNum; i++)
 	{
@@ -56,7 +52,8 @@ int main()
 	}
 	ori_time = ori_time / runNum;
 	printf("\naverage run time is: %.6f  \n", ori_time);
-	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%优化中%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+	runNum = 100;
 
 
 	for (int m = 0; m < 5; m++)
@@ -89,7 +86,7 @@ int main()
 		grid[m] = bestGrid;
 		printf("index: %d, bestBlock: %d, bestGrid: %d, bestTime: %f \n\n\n", m, bestBlock.x, bestGrid.x, best_time);
 	}
-	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%优化后%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+	printf("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 	runNum = 1000;
 	for (int i = 0; i < runNum; i++)
 	{

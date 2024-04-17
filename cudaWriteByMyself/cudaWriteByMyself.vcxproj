@@ -93,7 +93,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="doDebug.cuh" />
-    <ClInclude Include="matplotlibcpp.h" />
     <ClInclude Include="processing_gpu.cuh" />
   </ItemGroup>
   <ItemGroup>
