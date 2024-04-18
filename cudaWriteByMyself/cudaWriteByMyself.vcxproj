@@ -87,13 +87,14 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CudaCompile Include="better_pack.cu" />
     <CudaCompile Include="doDebug.cu" />
     <CudaCompile Include="kernel.cu" />
     <CudaCompile Include="processing_gpu.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="better_pack.cuh" />
     <ClInclude Include="doDebug.cuh" />
-    <ClInclude Include="matplotlibcpp.h" />
     <ClInclude Include="processing_gpu.cuh" />
   </ItemGroup>
   <ItemGroup>
