@@ -172,7 +172,7 @@ void writeData (double *d_signal, int M, int N)               //’‚∏ˆ ‰»Îµƒ «gpuµ
     size_t memSize = M * N * sizeof(double);
     double* out;
     cudaMallocHost((void**)&out, memSize);
-    cudaMemcpy(out, d_signal, memSize, cudaMemcpyHostToHost);
+    cudaMemcpy(out, d_signal, memSize, cudaMemcpyDeviceToHost);
     //out[1] = 1;
     FILE* fpWrite;
     fpWrite = fopen("writeData_out.txt", "w");
