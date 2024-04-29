@@ -1,4 +1,4 @@
-#include"better_pack.cuh"
+#include"better_pack_fw.cuh"
 #include"processing_gpu.cuh"
 
 __global__ void better_rdComplexMultiply(cuDoubleComplex* s, cuDoubleComplex* w, int M, int N)         //为了辅助转置弄的

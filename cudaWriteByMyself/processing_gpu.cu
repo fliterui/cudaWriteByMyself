@@ -70,15 +70,6 @@ __global__ void rdComplexTranspose(cuDoubleComplex* sout, cuDoubleComplex* sin, 
  }
 
 
-/*__global__ void rdSquareCopy(cuDoubleComplex* sout, cuDoubleComplex* sin, int M, int N) {           //sin∆Ω∑Ω»ª∫Û ‰≥ˆµΩcout¿Ô   //ƒ„Àµƒ„∂º∆Ω∑Ω¡À, ªπ∏¥ ˝∏……∂, ∏ƒ¡À!?
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
-
-    if (i < N * M)
-    {
-        double x = cuCabsf(sin[i]);                                          //«Ûƒ£
-        sout[i] = make_cuFloatComplex(x * x, 0);                            //∆Ω∑Ω, ◊™∏¥ ˝
-    }
-}*/
 
 
 __global__ void rdSquareCopy(double* sout, cuDoubleComplex* sin, int M, int N) {           //sin∆Ω∑Ω»ª∫Û ‰≥ˆµΩcout¿Ô   //ƒ„Àµƒ„∂º∆Ω∑Ω¡À, ªπ∏¥ ˝∏……∂, ∏ƒ¡À!?
@@ -93,98 +84,7 @@ __global__ void rdSquareCopy(double* sout, cuDoubleComplex* sin, int M, int N) {
 
 
 
-void readData(cuDoubleComplex* signal, cuDoubleComplex *ori, int M, int N)                    //’‚∏ˆµΩ ±∫Ú”√πÃ∂®ƒ⁄¥Êƒ‹∫√µ„
-{
-    FILE* fp;//Œƒº˛÷∏’Î
-    fp = fopen("signal_real.txt", "r");//“‘Œƒ±æ∑Ω Ω¥Úø™Œƒº˛°£
-    if (fp == NULL) //¥Úø™Œƒº˛≥ˆ¥Ì°£
-        printf("error1");
-    for (int i = 0; i<M*N; i++)
-    {
-        fscanf(fp, "%lf", &signal[i].x);
-  
-    }
-    fclose(fp);//πÿ±’Œƒº˛
-    fp = fopen("signal_imag.txt", "r");
-    if (fp == NULL)
-        printf("error");
-    for (int i = 0; i < M * N; i++)
-    {
-        fscanf(fp, "%lf", &signal[i].y);
 
-    }
-    fclose(fp);
-    fp = fopen("ori_real.txt", "r");
-    if (fp == NULL)
-        printf("error");
-    for (int i = 0; i<N; i++)
-    {
-        fscanf(fp, "%lf", &ori[i].x);
-
-    }
-    fclose(fp);
-    fp = fopen("ori_imag.txt", "r");
-    if (fp == NULL)
-        printf("error");
-    for (int i = 0; i < N; i++)
-    {
-        fscanf(fp, "%lf", &ori[i].y);
-    }
-    fclose(fp);
-    printf("∂¡ÕÍ¡À! \n");
-}
-
-void writeDataComplex(cuDoubleComplex* d_signal, int M, int N)                    
-{
-    int memSize = M * N * sizeof(cuDoubleComplex);
-    cuDoubleComplex* signal;
-    cudaMallocHost((void**)&signal,memSize);
-    cudaMemcpy(signal, d_signal, memSize, cudaMemcpyDeviceToHost);
-    //cudaMemset(signal, 1145, memSize);
-    test(d_signal, M, N);
-    FILE* fp;//Œƒº˛÷∏’Î
-    fp = fopen("signal_real_out.txt", "w");//“‘Œƒ±æ∑Ω Ω¥Úø™Œƒº˛°£
-    printf("caonima, %lf", signal[6].y);
-    if (fp == NULL) //¥Úø™Œƒº˛≥ˆ¥Ì°£
-        printf("error1");
-    for (int i = 0; i < M * N; i++)
-    {
-        fprintf(fp, "%lf\n", signal[i].x);
-
-    }
-    fclose(fp);//πÿ±’Œƒº˛
-    fp = fopen("signal_imag_out.txt", "w");
-    if (fp == NULL)
-        printf("error");
-    for (int i = 0; i < M * N; i++)
-    {
-        fprintf(fp, "%lf\n", signal[i].y);
-        
-
-    }
-    fclose(fp);
-    
-    printf("–¥ÕÍ¡À, ƒ„’Ê∞Ù! \n");
-}
-
-void writeData (double *d_signal, int M, int N)               //’‚∏ˆ ‰»Îµƒ «gpuµƒƒ⁄¥ÊæÕ––¡À, À˚ª·◊‘∂Ø∏¯ƒ„øΩ±¥µΩHost¿Ô
-{
-    size_t memSize = M * N * sizeof(double);
-    double* out;
-    cudaMallocHost((void**)&out, memSize);
-    cudaMemcpy(out, d_signal, memSize, cudaMemcpyDeviceToHost);
-    //out[1] = 1;
-    FILE* fpWrite;
-    fpWrite = fopen("writeData_out.txt", "w");
-    if (fpWrite == NULL)
-    {
-        printf("error");
-        return;
-    }
-    for (int i = 0; i < M * N; i++)
-        fprintf(fpWrite, "%2.15f\n", out[i]);
-    fclose(fpWrite);
-}
 
 /*¬ˆ≥Â—πÀı
 * d_signal «ªÿ≤®, d_ori «sin–≈∫≈, M, N «–≈∫≈µƒM––N¡–
@@ -274,59 +174,7 @@ void writeData (double *d_signal, int M, int N)               //’‚∏ˆ ‰»Îµƒ «gpuµ
          }
      }
  }
- /*
- void test(cuDoubleComplex* d_signal, int M, int N)
- {
-     size_t memSize;
-     memSize = M * N * sizeof(double);
-     double* a;
-     cudaMalloc((void**)&a, memSize);
-     cudaMemset(a, 0, memSize);
-     dim3 blockkk, griddd;
-     blockkk.x = 1024;
-     griddd.x = (M * N + blockkk.x - 1) / blockkk.x;
-     rdSquareCopy << < griddd, blockkk >> > (a, d_signal, M, N);
-     printf("test out: ");
-     printGpuModFloat(a);
-     writeData(a, M, N);
-     cudaFree(a);
- }
 
- void printGpuModComplex(cuDoubleComplex  *d_signal)
- {
-     cuDoubleComplex* a;
-     cudaMallocHost((void**)&a, sizeof(cuDoubleComplex));
-     cudaMemcpy(a, d_signal, sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
-     printf("%f   \n", cuCabs(a[0]));
-     cudaFree(a);
- }
- 
- void printGpuModFloat(double* d_signal)
- {
-     double* a;
-     cudaMallocHost((void**)&a, sizeof(double));
-     cudaMemcpy(a, d_signal, sizeof(double), cudaMemcpyDeviceToHost);
-     printf("%f\n", a[0]);
- }
-
- void makeSmall(cuDoubleComplex* d_signal, int M, int N)
- {
-     dim3 block, grid;
-     block.x = BLOCKX;
-     grid.x = (M * N + block.x - 1) / block.x;
-     mod1w << <grid, block >> > (d_signal, M, N);
- }
-
-
- __global__ void mod1w(cuDoubleComplex* d_signal, int M, int N)
- {
-     int i = blockIdx.x * blockDim.x + threadIdx.x;
-     if (i < M * N)
-     {
-         d_signal[i] = make_cuDoubleComplex(cuCreal(d_signal[i]) / 100000, cuCimag(d_signal[i]) / 100000);
-     }
- }
- */
  LARGE_INTEGER nFreq;
  LARGE_INTEGER nLastTime1;
  LARGE_INTEGER nLastTime2;

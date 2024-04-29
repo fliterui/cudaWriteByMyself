@@ -1,5 +1,5 @@
-#ifndef BETTER_PACK_H
-#define BETTER_PACK_H
+#ifndef BETTER_PACK_FW_H
+#define BETTER_PACK_FW_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,4 +14,4 @@
 
 
 
-#endif // !BETTER_PACK_H
+#endif // !BETTER_PACK_FW_H

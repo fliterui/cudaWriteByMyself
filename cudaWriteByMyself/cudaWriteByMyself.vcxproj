@@ -87,15 +87,19 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="better_pack.cu" />
+    <CudaCompile Include="better_pack_fw.cu" />
     <CudaCompile Include="doDebug.cu" />
+    <CudaCompile Include="fileOp.cu" />
     <CudaCompile Include="kernel.cu" />
     <CudaCompile Include="processing_gpu.cu" />
+    <CudaCompile Include="transposer.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="better_pack.cuh" />
+    <ClInclude Include="better_pack_fw.cuh" />
     <ClInclude Include="doDebug.cuh" />
+    <ClInclude Include="fileOp.cuh" />
     <ClInclude Include="processing_gpu.cuh" />
+    <ClInclude Include="transposer.cuh" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="outtt.txt" />
