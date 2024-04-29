@@ -8,6 +8,9 @@
     <CudaCompile Include="doDebug.cu">
       <Filter>源文件</Filter>
     </CudaCompile>
+    <CudaCompile Include="transposer.cu">
+      <Filter>源文件</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="头文件">
@@ -21,10 +24,10 @@
     <ClInclude Include="processing_gpu.cuh">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="matplotlibcpp.h">
+    <ClInclude Include="doDebug.cuh">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="doDebug.cuh">
+    <ClInclude Include="transposer.cuh">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

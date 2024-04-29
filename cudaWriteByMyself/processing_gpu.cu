@@ -242,6 +242,7 @@ void writeData (double *d_signal, int M, int N)               //’‚∏ˆ ‰»Îµƒ «gpuµ
      size_t memSize = M * N * sizeof(cuDoubleComplex);
      cudaMalloc((void**)&dd_signal, memSize);
      rdComplexTranspose <<< grid, block >>> (dd_signal, d_signal, M, N);                                    //œ»◊™÷√∫√◊ˆ¡–µƒfft           //’‚∏ˆµ√∫›∫›µƒ”≈ªØ
+
      //writeDataComplex(dd_signal, M, N);
      cufftHandle plan;
      cufftPlan1d(&plan,M,CUFFT_Z2Z,N);                                                                                                          //∞¥¿ÌÀµfftµ„ ˝”¶∏√¥Û”⁄M¿¥◊≈ º¥“ª∞„k>M
