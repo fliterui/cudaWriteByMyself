@@ -16,7 +16,7 @@
 /*
 * blockx= BDIMX
 * blocky=BDIMY
-* dim3 block3(blockx, blocky);
+* dim3e block3(blockx, blocky);
 * dim3 grid3((N + block3.x - 1) / block3.x, (M + block3.y - 1) / block3.y);
 */
 __global__ void naiveGmem(cuDoubleComplex* out, cuDoubleComplex* in, int nx, int ny);				//for a M*N matric . nx is N, ny is M
