@@ -14,7 +14,7 @@
 //#include<pyconfig.h>
 void dev_setup(int M, int N);
 __global__ void rdComplexMultiply(cuDoubleComplex* s, cuDoubleComplex* w, int M, int N);
-__global__ void rdComplexTranspose(cuDoubleComplex* sout, cuDoubleComplex* sin, int M, int N);
+__global__ void s(cuDoubleComplex* sout, cuDoubleComplex* sin, int M, int N);
 __global__ void rdSquareCopy(double* sout, cuDoubleComplex* sin, int M, int N);
 void readData(cuDoubleComplex* signal, cuDoubleComplex* ori, int M, int N);
 void writeData(double* result, int M, int N);
