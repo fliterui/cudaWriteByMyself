@@ -41,6 +41,7 @@ void dev_setup(int M,int N)
     printf("  Memory 时钟频率:                   %.0f Mhz\n",
         deviceProp.memoryClockRate * 1e-3f);
     printf("  矩阵规模：                         %d * %d\n", M, N);
+    printf("maxThreadsPerBlock: %d\n", deviceProp.maxThreadsPerBlock);
 }
 
 __global__ void rdComplexMultiply(cuDoubleComplex* s, cuDoubleComplex* w, int M, int N)         //这个是nmlgb的脉冲压缩, 那那个b匹配滤波器是干啥的
